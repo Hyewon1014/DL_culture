@@ -2,14 +2,66 @@ import React, { useRef, useState } from 'react';
 
 const LandingPage = ({ onUpload }) => {
     const fileInputRef = useRef(null);
-    // ... (videoRef, canvasRef, isCameraOpen 등 기존 로직 유지)
+    const videoRef = useRef(null);
+    const canvasRef = useRef(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-    // 언어/국적 상태
+    // 언어/국적 상태 (로컬 상태)
     const [language, setLanguage] = useState("ko");
     const [nationality, setNationality] = useState("Korea");
 
-    // ... (handleFileChange, startCamera, stopCamera, captureImage 등 기존 로직 유지)
-    // 💡 참고: onUpload 시 language, nationality를 전달하는 로직은 이미 반영됨.
+    // ✅ 누락되었던 파일 변경 핸들러 함수 정의
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // App.jsx로 파일, 언어, 국적 전달
+            onUpload(file, language, nationality);
+        }
+    };
+    
+    // --- 카메라 관련 함수 정의 ---
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            setIsCameraOpen(true);
+            setTimeout(() => { 
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            }, 100);
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            alert("카메라에 접근할 수 없습니다. 권한을 확인해주세요.");
+        }
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const tracks = videoRef.current.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+        }
+        setIsCameraOpen(false);
+    };
+
+    const captureImage = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob((blob) => {
+                const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
+                // 카메라 캡처 시에도 언어/국적 정보 전달
+                onUpload(file, language, nationality);
+                stopCamera();
+            }, 'image/jpeg');
+        }
+    };
+    // ----------------------------
 
     return (
         <div className="glass-panel animate-fade-in">
@@ -20,7 +72,7 @@ const LandingPage = ({ onUpload }) => {
                 사진을 찍거나 업로드하여, 당신의 문화에 맞춘 설명을 들어보세요.
             </p>
 
-            {/* --- 언어 + 국적 선택 UI (고급 스타일링 적용) --- */}
+            {/* --- 언어 + 국적 선택 UI --- */}
             <div style={{ 
                 marginBottom: '3rem', 
                 display: 'flex', 
@@ -34,7 +86,7 @@ const LandingPage = ({ onUpload }) => {
                     <select 
                         value={language}
                         onChange={(e) => setLanguage(e.target.value)}
-                        className="custom-select" /* CSS에서 추가 스타일링 가능 */
+                        className="custom-select" 
                     >
                         <option value="ko">한국어</option>
                         <option value="en">English</option>
@@ -76,7 +128,14 @@ const LandingPage = ({ onUpload }) => {
                 <p style={{ fontSize: '1.2rem', fontWeight: '500' }}>여기를 클릭하여 사진 업로드</p>
             </div>
 
-            <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+            {/* 파일 인풋 (hidden) - 여기서 handleFileChange가 호출됨 */}
+            <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                onChange={handleFileChange} 
+            />
 
             {/* --- 버튼 영역 --- */}
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
@@ -88,7 +147,20 @@ const LandingPage = ({ onUpload }) => {
                 </button>
             </div>
 
-            {/* ... (Camera Modal 로직 유지) ... */}
+            {/* --- Camera Modal (로직 유지) --- */}
+            {isCameraOpen && (
+                <div className="camera-modal-overlay">
+                    {/* ... (모달 UI 및 비디오, 캔버스 요소) ... */}
+                    <div className="camera-modal-content">
+                        <button className="btn-close" onClick={stopCamera}>&times;</button>
+                        <video ref={videoRef} autoPlay playsInline className="camera-video"></video>
+                        <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
+                        <div className="camera-controls">
+                            <button className="btn-capture" onClick={captureImage}></button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
