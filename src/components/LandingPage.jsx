@@ -6,10 +6,14 @@ const LandingPage = ({ onUpload }) => {
     const canvasRef = useRef(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
 
+    // 언어 + 국적 상태 추가
+    const [language, setLanguage] = useState("ko");
+    const [nationality, setNationality] = useState("Korea");
+
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            onUpload(file);
+            onUpload(file, language, nationality);  // 언어 + 국적 추가 전달
         }
     };
 
@@ -17,7 +21,6 @@ const LandingPage = ({ onUpload }) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             setIsCameraOpen(true);
-            // Wait for modal to render
             setTimeout(() => {
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
@@ -43,18 +46,15 @@ const LandingPage = ({ onUpload }) => {
             const video = videoRef.current;
             const canvas = canvasRef.current;
 
-            // Set canvas size to match video
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
 
-            // Draw video frame to canvas
             const context = canvas.getContext('2d');
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Convert to file
             canvas.toBlob((blob) => {
                 const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
-                onUpload(file);
+                onUpload(file, language, nationality);  // 언어 + 국적 추가 전달
                 stopCamera();
             }, 'image/jpeg');
         }
@@ -69,6 +69,37 @@ const LandingPage = ({ onUpload }) => {
                 사진을 찍거나 업로드하여<br />우리 문화재의 이야기를 들어보세요.
             </p>
 
+            {/* 언어 + 국적 선택 UI */}
+            <div style={{ marginBottom: '2rem' }}>
+                <label style={{ marginRight: '10px' }}>언어 선택:</label>
+                <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    style={{ padding: "6px", borderRadius: "6px" }}
+                >
+                    <option value="ko">한국어</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                    <option value="zh">中文</option>
+                </select>
+
+                <br /><br />
+
+                <label style={{ marginRight: '10px' }}>국적 선택:</label>
+                <select
+                    value={nationality}
+                    onChange={(e) => setNationality(e.target.value)}
+                    style={{ padding: "6px", borderRadius: "6px" }}
+                >
+                    <option value="Korea">한국</option>
+                    <option value="USA">미국</option>
+                    <option value="Japan">일본</option>
+                    <option value="China">중국</option>
+                    <option value="France">프랑스</option>
+                </select>
+            </div>
+
+            {/* 업로드 영역 */}
             <div
                 style={{
                     border: '2px dashed var(--glass-border)',
@@ -95,16 +126,10 @@ const LandingPage = ({ onUpload }) => {
             />
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                <button
-                    className="btn-primary"
-                    onClick={() => fileInputRef.current.click()}
-                >
+                <button className="btn-primary" onClick={() => fileInputRef.current.click()}>
                     사진 업로드
                 </button>
-                <button
-                    className="btn-secondary"
-                    onClick={startCamera}
-                >
+                <button className="btn-secondary" onClick={startCamera}>
                     카메라 켜기
                 </button>
             </div>
