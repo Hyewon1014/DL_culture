@@ -38,10 +38,13 @@ const ChatInterface = ({ data, onBack }) => {
         setIsLoading(true);
 
         try {
+            // [수정됨] aiService.js의 chatWithAI 정의에 맞춰 인자를 풀어서 전달
             const responseContent = await chatWithAI(
-                input,
-                { result, language, nationality },
-                messages
+                input,          // message
+                result,         // context (문화재 정보가 담긴 객체)
+                messages,       // history
+                language,       // language (추가됨)
+                nationality     // nationality (추가됨)
             );
 
             const aiMessage = { role: 'assistant', content: responseContent };
