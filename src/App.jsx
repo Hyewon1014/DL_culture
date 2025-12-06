@@ -6,11 +6,19 @@ import { analyzeImage } from './services/aiService';
 import './index.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('landing'); // landing, loading, result, chat
+  const [currentView, setCurrentView] = useState('landing'); 
   const [analysisResult, setAnalysisResult] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const handleImageUpload = async (file) => {
+  // 언어/국적 저장
+  const [language, setLanguage] = useState("ko");
+  const [nationality, setNationality] = useState("KR");
+
+  // LandingPage → 이미지 + 언어 + 국적 받아오도록 수정됨
+  const handleImageUpload = async (file, selectedLang, selectedNation) => {
+    setLanguage(selectedLang);
+    setNationality(selectedNation);
+
     setSelectedImage(URL.createObjectURL(file));
     setCurrentView('loading');
 
@@ -33,10 +41,13 @@ function App() {
 
   return (
     <div className="app-container" style={{ width: '100%', maxWidth: '600px', padding: '20px' }}>
+      
+      {/* 1) 첫 화면 */}
       {currentView === 'landing' && (
         <LandingPage onUpload={handleImageUpload} />
       )}
 
+      {/* 2) 로딩 화면 */}
       {currentView === 'loading' && (
         <div className="glass-panel animate-fade-in" style={{ textAlign: 'center' }}>
           <div className="loader" style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔍</div>
@@ -45,6 +56,7 @@ function App() {
         </div>
       )}
 
+      {/* 3) 결과 화면 */}
       {currentView === 'result' && analysisResult && (
         <ResultPage
           result={analysisResult}
@@ -54,9 +66,14 @@ function App() {
         />
       )}
 
+      {/* 4) 챗봇 화면 */}
       {currentView === 'chat' && (
         <ChatInterface
-          context={analysisResult}
+          data={{
+            result: analysisResult,
+            language,
+            nationality,
+          }}
           onBack={() => setCurrentView('result')}
         />
       )}
