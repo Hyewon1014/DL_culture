@@ -2,150 +2,87 @@ import React, { useState, useRef, useEffect } from 'react';
 import { chatWithAI } from '../services/aiService';
 
 const ChatInterface = ({ data, onBack }) => {
-    const { result, language, nationality } = data;
+    const { result, language, nationality } = data; // App.jsx에서 넘겨준 데이터 구조
 
-    // 초기 메시지를 언어에 맞게 설정
     const welcomeMessages = {
-        ko: `안녕하세요! ${result.name}에 대해 무엇이 궁금하신가요?`,
-        en: `Hello! What would you like to know about ${result.name}?`,
-        jp: `こんにちは！ ${result.name} について何を知りたいですか？`,
-        zh: `你好！ 想了解关于 ${result.name} 的什么内容？`
+        ko: `안녕하세요! ${result.name}에 대해 더 궁금한 점이 있으신가요?`,
+        en: `Hello! What else would you like to know about ${result.name}?`,
+        jp: `こんにちは！ ${result.name} について他に知りたいことはありますか？`,
+        zh: `你好！ 关于 ${result.name} 还有什么想了解的吗？`
     };
 
     const messagesEndRef = useRef(null);
-
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: welcomeMessages[language] || welcomeMessages.ko }
+        { role: 'assistant', content: welcomeMessages[language] || welcomeMessages.en }
     ]);
-
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
     useEffect(() => {
-        scrollToBottom();
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
     const handleSend = async () => {
         if (!input.trim()) return;
 
-        const userMessage = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
+        const userMsg = { role: 'user', content: input };
+        setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
 
         try {
-            // [수정됨] aiService.js의 chatWithAI 정의에 맞춰 인자를 풀어서 전달
-            const responseContent = await chatWithAI(
-                input,          // message
-                result,         // context (문화재 정보가 담긴 객체)
-                messages,       // history
-                language,       // language (추가됨)
-                nationality     // nationality (추가됨)
+            // ⚠️ 수정됨: aiService.js의 chatWithAI(userId, message, language) 대신
+            // 여기서는 message, contextName, language, nationality 순서로 전달합니다.
+            const reply = await chatWithAI(
+                input,          // 질문
+                result.name,    // 문화재 이름 (context)
+                language,       // 언어
+                nationality     // 국적
             );
 
-            const aiMessage = { role: 'assistant', content: responseContent };
-            setMessages(prev => [...prev, aiMessage]);
+            setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
         } catch (error) {
-            console.error(error);
-            setMessages(prev => [
-                ...prev,
-                { role: 'assistant', content: "죄송합니다. 오류가 발생했습니다." }
-            ]);
+            setMessages(prev => [...prev, { role: 'assistant', content: "오류가 발생했습니다. 다시 시도해주세요." }]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter') handleSend();
-    };
-
     return (
         <div className="glass-panel animate-fade-in" style={{ height: '600px', display: 'flex', flexDirection: 'column', padding: '0' }}>
-            {/* Header */}
-            <div style={{
-                padding: '1rem',
-                borderBottom: '1px solid var(--glass-border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-            }}>
-                <button className="btn-secondary" onClick={onBack} style={{ padding: '5px 10px', fontSize: '0.8rem' }}>
-                    ← 뒤로
-                </button>
-                <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                    {result.name} 챗봇
-                </span>
-                <div style={{ width: '40px' }}></div>
+            <div style={{ padding: '1rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button onClick={onBack} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>←</button>
+                <span style={{ fontWeight: 'bold' }}>{result.name} ({nationality} 모드)</span>
+                <div style={{ width: '20px' }}></div>
             </div>
 
-            {/* Messages */}
-            <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                padding: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem'
-            }}>
-                {messages.map((msg, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                            maxWidth: '80%',
-                            background: msg.role === 'user' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-                            color: msg.role === 'user' ? '#000' : '#fff',
-                            padding: '10px 15px',
-                            borderRadius: '12px',
-                            borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
-                            borderBottomLeftRadius: msg.role === 'assistant' ? '2px' : '12px',
-                        }}
-                    >
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {messages.map((msg, idx) => (
+                    <div key={idx} style={{
+                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                        background: msg.role === 'user' ? '#007bff' : '#f1f3f5',
+                        color: msg.role === 'user' ? '#fff' : '#333',
+                        padding: '10px 15px',
+                        borderRadius: '15px',
+                        maxWidth: '80%'
+                    }}>
                         {msg.content}
                     </div>
                 ))}
-
-                {isLoading && (
-                    <div style={{ alignSelf: 'flex-start', color: '#aaa', fontSize: '0.9rem' }}>
-                        답변 작성 중...
-                    </div>
-                )}
-
+                {isLoading && <div style={{ alignSelf: 'flex-start', color: '#999', fontSize: '0.9rem' }}>...</div>}
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div style={{
-                padding: '1rem',
-                borderTop: '1px solid var(--glass-border)',
-                display: 'flex',
-                gap: '10px'
-            }}>
-                <input
-                    type="text"
+            <div style={{ padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '10px' }}>
+                <input 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="궁금한 점을 물어보세요..."
-                    style={{
-                        flex: 1,
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--glass-border)',
-                        background: 'rgba(0,0,0,0.3)',
-                        color: '#fff',
-                        outline: 'none'
-                    }}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder="질문을 입력하세요..."
+                    style={{ flex: 1, padding: '10px', borderRadius: '20px', border: '1px solid #ddd' }}
                 />
-                <button className="btn-primary" onClick={handleSend} disabled={isLoading}>
-                    전송
-                </button>
+                <button onClick={handleSend} disabled={isLoading} style={{ padding: '10px 20px', borderRadius: '20px', background: '#007bff', color: '#fff', border: 'none', cursor: 'pointer' }}>전송</button>
             </div>
         </div>
     );
