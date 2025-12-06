@@ -1,13 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { chatWithAI } from '../services/aiService';
 
-const ChatInterface = ({ context, onBack }) => {
+const ChatInterface = ({ data, onBack }) => {
+    const { result, language, nationality } = data;
+
+    // 초기 메시지를 언어에 맞게 설정
+    const welcomeMessages = {
+        ko: `안녕하세요! ${result.name}에 대해 무엇이 궁금하신가요?`,
+        en: `Hello! What would you like to know about ${result.name}?`,
+        jp: `こんにちは！ ${result.name} について何を知りたいですか？`,
+        zh: `你好！ 想了解关于 ${result.name} 的什么内容？`
+    };
+
+    const messagesEndRef = useRef(null);
+
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: `안녕하세요! ${context.name}에 대해 궁금한 점이 있으신가요?` }
+        { role: 'assistant', content: welcomeMessages[language] || welcomeMessages.ko }
     ]);
+
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -26,28 +38,33 @@ const ChatInterface = ({ context, onBack }) => {
         setIsLoading(true);
 
         try {
-            const responseContent = await chatWithAI(input, context, messages);
-            const aiResponse = {
-                role: 'assistant',
-                content: responseContent
-            };
-            setMessages(prev => [...prev, aiResponse]);
+            const responseContent = await chatWithAI(
+                input,
+                { result, language, nationality },
+                messages
+            );
+
+            const aiMessage = { role: 'assistant', content: responseContent };
+            setMessages(prev => [...prev, aiMessage]);
+
         } catch (error) {
             console.error(error);
-            setMessages(prev => [...prev, { role: 'assistant', content: "죄송합니다. 오류가 발생했습니다." }]);
+            setMessages(prev => [
+                ...prev,
+                { role: 'assistant', content: "죄송합니다. 오류가 발생했습니다." }
+            ]);
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleSend();
-        }
+        if (e.key === 'Enter') handleSend();
     };
 
     return (
         <div className="glass-panel animate-fade-in" style={{ height: '600px', display: 'flex', flexDirection: 'column', padding: '0' }}>
+            {/* Header */}
             <div style={{
                 padding: '1rem',
                 borderBottom: '1px solid var(--glass-border)',
@@ -58,11 +75,21 @@ const ChatInterface = ({ context, onBack }) => {
                 <button className="btn-secondary" onClick={onBack} style={{ padding: '5px 10px', fontSize: '0.8rem' }}>
                     ← 뒤로
                 </button>
-                <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{context.name} 챗봇</span>
-                <div style={{ width: '40px' }}></div> {/* Spacer */}
+                <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                    {result.name} 챗봇
+                </span>
+                <div style={{ width: '40px' }}></div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Messages */}
+            <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+            }}>
                 {messages.map((msg, index) => (
                     <div
                         key={index}
@@ -80,15 +107,23 @@ const ChatInterface = ({ context, onBack }) => {
                         {msg.content}
                     </div>
                 ))}
+
                 {isLoading && (
                     <div style={{ alignSelf: 'flex-start', color: '#aaa', fontSize: '0.9rem' }}>
                         답변 작성 중...
                     </div>
                 )}
+
                 <div ref={messagesEndRef} />
             </div>
 
-            <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: '10px' }}>
+            {/* Input */}
+            <div style={{
+                padding: '1rem',
+                borderTop: '1px solid var(--glass-border)',
+                display: 'flex',
+                gap: '10px'
+            }}>
                 <input
                     type="text"
                     value={input}
