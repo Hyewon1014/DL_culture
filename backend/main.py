@@ -11,12 +11,12 @@ import json
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-# Load environment variables
+# 환경 변수 로드 (.env 파일이 backend 폴더 상위에 있다고 가정)
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 app = FastAPI()
 
-# Enable CORS for frontend
+# CORS 설정 (프론트엔드와 통신 허용)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,14 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure Gemini
+# Gemini API 설정
 API_KEY = os.getenv("VITE_API_KEY")
 if API_KEY:
     genai.configure(api_key=API_KEY)
 else:
     print("Warning: VITE_API_KEY not found in .env")
 
-# Load Model and Classes
+# 모델 및 클래스 로드 설정
 MODEL_PATH = 'culture_model.pth'
 CLASS_NAMES_PATH = 'class_names.txt'
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -40,7 +40,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = None
 class_names = []
 
-# Load Descriptions
+# 고정 설명 데이터 (Gemini 실패 시 백업용)
 DESCRIPTIONS_PATH = 'descriptions.json'
 DESCRIPTIONS = {}
 
@@ -60,18 +60,21 @@ def load_artifacts():
         with open(CLASS_NAMES_PATH, 'r', encoding='utf-8') as f:
             class_names = [line.strip() for line in f.readlines()]
         
-        model = get_model(len(class_names))
-        if os.path.exists(MODEL_PATH):
-            model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
-            model.to(device)
-            model.eval()
-            print("Model loaded successfully.")
-        else:
-            print("Model file not found.")
+        # model.py의 get_model 함수가 필요합니다.
+        try:
+            model = get_model(len(class_names))
+            if os.path.exists(MODEL_PATH):
+                model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+                model.to(device)
+                model.eval()
+                print("✅ Model loaded successfully.")
+            else:
+                print("❌ Model file not found.")
+        except Exception as e:
+            print(f"❌ Error loading model: {e}")
     else:
-        print("Class names file not found.")
+        print("❌ Class names file not found.")
 
-# Load on startup
 load_artifacts()
 
 def transform_image(image_bytes):
@@ -84,20 +87,21 @@ def transform_image(image_bytes):
     return transform(image).unsqueeze(0)
 
 # --------------------------
-#       PREDICT API
+#        PREDICT API
 # --------------------------
 
 @app.post("/predict")
 async def predict(
     file: UploadFile = File(...),
-    language: str = Form(...),         # 추가됨
-    nationality: str = Form(...)       # 추가됨
+    language: str = Form(...),
+    nationality: str = Form(...)
 ):
-    print(f"📌 Predict received → language={language}, nationality={nationality}")
+    print(f"📌 Predict Request: language={language}, nationality={nationality}")
 
     if model is None:
         return {"error": "Model not loaded."}
     
+    # 1. Vision AI: 이미지 분류
     image_bytes = await file.read()
     tensor = transform_image(image_bytes).to(device)
     
@@ -110,7 +114,36 @@ async def predict(
     confidence_score = int(topk_probs[0][0].item() * 100)
     class_name = class_names[predicted_index]
 
-    # Alternatives
+    # 2. Generative AI: 맞춤형 설명 생성
+    description = ""
+    try:
+        # 안정적인 1.5 Flash 모델 사용
+        model_ai = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        당신은 한국 문화유산 전문 가이드입니다.
+        
+        [상황]
+        - 대상 문화재: {class_name}
+        - 관람객 국적: {nationality}
+        - 사용 언어: {language}
+        
+        [요청]
+        1. 위 문화재에 대해 {language}로 설명해주세요.
+        2. 설명 중간에 {nationality} 문화권의 유명한 건축물, 역사, 또는 개념에 빗대어 이해하기 쉬운 비유(Metaphor)를 반드시 포함하세요.
+        3. 3~4문장으로 간결하고 친절하게 작성하세요.
+        """
+        
+        response = model_ai.generate_content(prompt)
+        description = response.text.strip()
+        print("✅ Gemini description generated")
+        
+    except Exception as e:
+        print(f"❌ Gemini Error: {e}")
+        # 실패 시 고정 설명 사용
+        description = DESCRIPTIONS.get(class_name, f"AI 설명을 생성할 수 없습니다. ({class_name})")
+
+    # 다른 후보군 (Alternatives)
     alternatives = []
     for i in range(1, len(topk_indices[0])):
         idx = topk_indices[0][i].item()
@@ -119,8 +152,6 @@ async def predict(
             "name": class_names[idx],
             "confidence": prob
         })
-
-    description = DESCRIPTIONS.get(class_name, "설명이 준비되지 않은 문화재입니다.")
     
     return {
         "name": class_name,
@@ -132,14 +163,14 @@ async def predict(
     }
 
 # --------------------------
-#       CHAT API
+#        CHAT API
 # --------------------------
 
 class ChatRequest(BaseModel):
     message: str
     context: str
-    language: str         # 추가됨
-    nationality: str      # 추가됨
+    language: str
+    nationality: str
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -147,21 +178,20 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail="API Key not configured")
     
     try:
-        model_ai = genai.GenerativeModel('gemini-2.0-flash')
+        model_ai = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
-        당신은 한국 문화재 전문가 AI입니다.
-
-        사용자가 선택한 언어: {request.language}
-        사용자의 국적: {request.nationality}
-
-        현재 사용자가 보고 있는 문화재는 '{request.context}'입니다.
+        당신은 한국 문화재 챗봇 도우미입니다.
         
-        사용자의 질문: {request.message}
+        - 현재 보고 있는 문화재: {request.context}
+        - 사용자 언어: {request.language}
+        - 사용자 국적: {request.nationality}
+        - 사용자 질문: {request.message}
 
-        → 설명은 반드시 사용자가 선택한 언어({request.language})로 답변하세요.
-        → 또한 사용자의 국적({request.nationality})에 맞는 문화적 비유를 자연스럽게 1번 포함하세요.
-        → 답변은 3문장 이내로 간결하게 요약하세요.
+        답변 가이드:
+        1. 반드시 {request.language}로 답변하세요.
+        2. {request.nationality} 사람의 문화적 배경을 고려하여 친절하게 답변하세요.
+        3. 질문에 대한 답변과 함께, 관련된 흥미로운 사실을 짧게 덧붙여주세요.
         """
 
         response = model_ai.generate_content(prompt)
@@ -169,7 +199,7 @@ async def chat(request: ChatRequest):
 
     except Exception as e:
         print(f"Chat Error: {e}")
-        return {"reply": f"오류 발생: {str(e)}"}
+        return {"reply": "죄송합니다. 오류가 발생하여 답변할 수 없습니다."}
 
 @app.get("/")
 def read_root():
