@@ -1,163 +1,101 @@
+/* index.css */
+
+/* --- 폰트 및 색상 변수 정의 --- */
 :root {
-  --primary-color: #d4af37;
-  /* Gold */
-  --primary-hover: #b5952f;
-  --background-dark: #1a1a1a;
-  --background-light: #2c2c2c;
-  --text-main: #ffffff;
-  --text-secondary: #cccccc;
-  --glass-bg: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --font-main: 'Inter', sans-serif;
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+    /* 배경 및 텍스트 색상 */
+    --background-dark: #0f1621;
+    --text-primary: #f8f8f8;
+    --text-secondary: #aaaaaa;
+
+    /* 액센트 색상 (고급스러운 앰버/골드 계열 사용) */
+    --primary-color: #f7b731; /* 버튼, 강조색 */
+    
+    /* Glassmorphism 설정 */
+    --glass-bg: rgba(255, 255, 255, 0.08); /* 매우 투명한 배경 */
+    --glass-border: rgba(255, 255, 255, 0.15); /* 은은한 테두리 */
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
+/* --- 전체 레이아웃 및 배경 --- */
 body {
-  font-family: var(--font-main);
-  background-color: var(--background-dark);
-  color: var(--text-main);
-  line-height: 1.6;
-  overflow-x: hidden;
+    /* Museum-AI처럼 깊이감 있는 배경 그라데이션 */
+    background: linear-gradient(135deg, var(--background-dark) 0%, #1e293b 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at top right, #2c3e50, #000000);
+/* --- 컨테이너 스타일 --- */
+.app-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    margin: 0 auto;
+    /* body의 align-items: center 덕분에 중앙에 위치합니다. */
 }
 
-button {
-  cursor: pointer;
-  border: none;
-  outline: none;
-  font-family: inherit;
-}
-
+/* --- Glass Panel (모든 컴포넌트의 기본 패널) --- */
 .glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: var(--shadow-lg);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px); /* 블러 효과 강화 */
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px; /* 모서리 부드럽게 */
+    box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4); /* 깊이감 있는 그림자 */
+    padding: 3rem; 
+}
+
+/* --- 버튼 스타일 --- */
+.btn-primary, .btn-secondary {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-  color: #000;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
+    /* 액센트 색상 강조 */
+    background: var(--primary-color);
+    color: #333; /* 어두운 텍스트 */
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+    box-shadow: 0 0 15px rgba(247, 183, 49, 0.6);
+    transform: translateY(-2px);
 }
 
 .btn-secondary {
-  background: transparent;
-  border: 1px solid var(--glass-border);
-  color: var(--text-main);
-  padding: 10px 20px;
-  border-radius: 8px;
-  transition: background 0.2s;
+    /* Glassmorphism 스타일 */
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.2);
 }
 
-/* Animations */
+/* --- 입력 필드/드롭다운 스타일링 --- */
+select, input[type="text"] {
+    padding: 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    outline: none;
+    appearance: none; /* 드롭다운 기본 스타일 제거 */
+}
+
+/* --- 로딩 애니메이션 (선택 사항) --- */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in {
-  animation: fadeIn 0.6s ease-out forwards;
-}
-
-/* Camera Modal */
-.camera-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  animation: fadeIn 0.3s ease-out;
-}
-
-.camera-modal-content {
-  background: #000;
-  padding: 1rem;
-  border-radius: 16px;
-  border: 1px solid var(--glass-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  max-width: 90%;
-  max-height: 90%;
-}
-
-.camera-video {
-  width: 100%;
-  max-width: 640px;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  transform: scaleX(-1);
-  /* Mirror effect */
-}
-
-.camera-controls {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-capture {
-  background: #ff4757;
-  color: white;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  transition: transform 0.2s;
-}
-
-.btn-capture:active {
-  transform: scale(0.9);
-}
-
-.btn-close {
-  position: absolute;
-  top: -40px;
-  right: 0;
-  color: white;
-  background: none;
-  font-size: 2rem;
+    animation: fadeIn 0.5s ease-out forwards;
 }
