@@ -1,6 +1,16 @@
 import React from 'react';
 
-const ResultPage = ({ result, image, onReset, onChat }) => {
+const ResultPage = ({ result, image, onReset, onChat, language, nationality }) => {
+
+    // ChatInterface로 넘길 데이터 묶어서 전달
+    const handleChat = () => {
+        onChat({
+            result,
+            language,
+            nationality
+        });
+    };
+
     return (
         <div className="glass-panel animate-fade-in">
             <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
@@ -39,7 +49,7 @@ const ResultPage = ({ result, image, onReset, onChat }) => {
             </p>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem' }}>
-                <button className="btn-primary" style={{ flex: 1 }} onClick={onChat}>
+                <button className="btn-primary" style={{ flex: 1 }} onClick={handleChat}>
                     AI와 대화하기 💬
                 </button>
                 <button className="btn-secondary" onClick={onReset}>
