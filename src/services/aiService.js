@@ -1,62 +1,65 @@
-// Python Backend Service
+// aiService.js
 
-// 이미지 분석 요청 — 언어/국적 추가됨
+// Flask 서버 주소 (기본 포트 5000)
+const API_BASE_URL = 'http://127.0.0.1:5000';
+
+// 1. 이미지 분석 요청
 export const analyzeImage = async (file, language, nationality) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('language', language);      // 추가됨
-    formData.append('nationality', nationality); // 추가됨
+    formData.append('language', language);
+
+    formData.append('country', nationality); 
 
     try {
-        const response = await fetch('http://localhost:8000/predict', {
+        // 엔드포인트 수정: /predict -> /analyze
+        const response = await fetch(`${API_BASE_URL}/analyze`, {
             method: 'POST',
             body: formData,
         });
 
         if (!response.ok) {
-            throw new Error(`Backend Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Backend Error: ${response.statusText}`);
         }
 
         const data = await response.json();
-
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
         return data;
+        
     } catch (error) {
         console.error("Analysis Error:", error);
         if (error.message.includes("Failed to fetch")) {
-            alert("백엔드 서버가 연결되지 않았습니다. 'backend' 폴더에서 'uvicorn main:app --reload'를 실행해주세요.");
+            alert("Flask 서버가 켜져있지 않습니다. 터미널에서 'python app.py'를 실행했는지 확인해주세요.");
         }
         throw error;
     }
 };
 
 
-// AI 챗봇 — 언어/국적 추가
-export const chatWithAI = async (message, context, history, language, nationality) => {
+// 2. AI 챗봇 (후속 질문)
+
+export const chatWithAI = async (userId, message, language) => {
     try {
-        const response = await fetch('http://localhost:8000/chat', {
+        const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-
             body: JSON.stringify({
-                message: message,
-                context: context.name || "알 수 없는 문화재",
-                language: language,        // 추가됨
-                nationality: nationality   // 추가됨
+                user_id: userId, 
+                question: message, 
+                language: language
             }),
         });
 
         if (!response.ok) {
-            throw new Error(`Backend Error: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Backend Error: ${response.statusText}`);
         }
 
         const data = await response.json();
-        return data.reply;
+        return data.response; 
+        
     } catch (error) {
         console.error("Chat Error:", error);
-        return "죄송합니다. AI 서버와 연결할 수 없습니다.";
+        throw error; 
     }
 };
