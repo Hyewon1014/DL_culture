@@ -10,11 +10,11 @@ const LandingPage = ({ onUpload }) => {
     const [language, setLanguage] = useState("ko");
     const [nationality, setNationality] = useState("Korea");
 
-    // ✅ 누락되었던 파일 변경 핸들러 함수 정의
+    // ✅ 필수 함수: 파일 업로드 처리 함수 (누락되었던 부분)
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // App.jsx로 파일, 언어, 국적 전달
+            // App.jsx의 onUpload 함수 호출
             onUpload(file, language, nationality);
         }
     };
@@ -55,7 +55,6 @@ const LandingPage = ({ onUpload }) => {
 
             canvas.toBlob((blob) => {
                 const file = new File([blob], "camera_capture.jpg", { type: "image/jpeg" });
-                // 카메라 캡처 시에도 언어/국적 정보 전달
                 onUpload(file, language, nationality);
                 stopCamera();
             }, 'image/jpeg');
@@ -150,7 +149,6 @@ const LandingPage = ({ onUpload }) => {
             {/* --- Camera Modal (로직 유지) --- */}
             {isCameraOpen && (
                 <div className="camera-modal-overlay">
-                    {/* ... (모달 UI 및 비디오, 캔버스 요소) ... */}
                     <div className="camera-modal-content">
                         <button className="btn-close" onClick={stopCamera}>&times;</button>
                         <video ref={videoRef} autoPlay playsInline className="camera-video"></video>
