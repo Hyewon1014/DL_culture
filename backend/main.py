@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import torch
@@ -67,9 +67,9 @@ def load_artifacts():
             model.eval()
             print("Model loaded successfully.")
         else:
-            print("Model file not found. Please train the model first.")
+            print("Model file not found.")
     else:
-        print("Class names file not found. Please train the model first.")
+        print("Class names file not found.")
 
 # Load on startup
 load_artifacts()
@@ -83,10 +83,20 @@ def transform_image(image_bytes):
     image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
     return transform(image).unsqueeze(0)
 
+# --------------------------
+#       PREDICT API
+# --------------------------
+
 @app.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(
+    file: UploadFile = File(...),
+    language: str = Form(...),         # 추가됨
+    nationality: str = Form(...)       # 추가됨
+):
+    print(f"📌 Predict received → language={language}, nationality={nationality}")
+
     if model is None:
-        return {"error": "Model not loaded. Please train the model first."}
+        return {"error": "Model not loaded."}
     
     image_bytes = await file.read()
     tensor = transform_image(image_bytes).to(device)
@@ -94,16 +104,13 @@ async def predict(file: UploadFile = File(...)):
     with torch.no_grad():
         outputs = model(tensor)
         probabilities = torch.nn.functional.softmax(outputs, dim=1)
-        
-        # Get Top 4 (1 Answer + 3 Alternatives)
         topk_probs, topk_indices = torch.topk(probabilities, min(4, len(class_names)))
         
-    # Main Answer (Rank 1)
     predicted_index = topk_indices[0][0].item()
     confidence_score = int(topk_probs[0][0].item() * 100)
     class_name = class_names[predicted_index]
-    
-    # Alternatives (Rank 2, 3, 4)
+
+    # Alternatives
     alternatives = []
     for i in range(1, len(topk_indices[0])):
         idx = topk_indices[0][i].item()
@@ -119,12 +126,20 @@ async def predict(file: UploadFile = File(...)):
         "name": class_name,
         "description": description,
         "matchPercentage": confidence_score,
-        "alternatives": alternatives
+        "alternatives": alternatives,
+        "language": language,
+        "nationality": nationality
     }
+
+# --------------------------
+#       CHAT API
+# --------------------------
 
 class ChatRequest(BaseModel):
     message: str
     context: str
+    language: str         # 추가됨
+    nationality: str      # 추가됨
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
@@ -132,26 +147,29 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail="API Key not configured")
     
     try:
-        # Use gemini-2.0-flash (Working with billing)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model_ai = genai.GenerativeModel('gemini-2.0-flash')
         
         prompt = f"""
         당신은 한국 문화재 전문가 AI입니다.
+
+        사용자가 선택한 언어: {request.language}
+        사용자의 국적: {request.nationality}
+
         현재 사용자가 보고 있는 문화재는 '{request.context}'입니다.
         
         사용자의 질문: {request.message}
-        
-        이 문화재에 대한 정확하고 친절한 설명을 제공해주세요.
-        **답변은 3문장 이내로, 핵심만 간결하게 요약해서 설명해주세요.**
-        너무 길게 설명하지 마세요.
-        만약 질문이 문화재와 관련이 없다면, 정중하게 문화재 관련 질문을 유도해주세요.
+
+        → 설명은 반드시 사용자가 선택한 언어({request.language})로 답변하세요.
+        → 또한 사용자의 국적({request.nationality})에 맞는 문화적 비유를 자연스럽게 1번 포함하세요.
+        → 답변은 3문장 이내로 간결하게 요약하세요.
         """
-        
-        response = model.generate_content(prompt)
+
+        response = model_ai.generate_content(prompt)
         return {"reply": response.text}
+
     except Exception as e:
         print(f"Chat Error: {e}")
-        return {"reply": f"죄송합니다. 오류가 발생했습니다.\n({str(e)})"}
+        return {"reply": f"오류 발생: {str(e)}"}
 
 @app.get("/")
 def read_root():
