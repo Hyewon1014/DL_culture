@@ -23,7 +23,7 @@ function App() {
     setCurrentView('loading');
 
     try {
-      const result = await analyzeImage(file);
+      const result = await analyzeImage(file, electedLang, selectedNation);
       setAnalysisResult(result);
       setCurrentView('result');
     } catch (error) {
