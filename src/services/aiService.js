@@ -1,65 +1,56 @@
-// aiService.js
-
-// Flask 서버 주소 (기본 포트 5000)
-const API_BASE_URL = 'http://127.0.0.1:5000';
+// Flask(FastAPI) 서버 주소
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // 1. 이미지 분석 요청
 export const analyzeImage = async (file, language, nationality) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('language', language);
-
-    formData.append('country', nationality); 
+    formData.append('nationality', nationality); // 백엔드 스키마와 일치
 
     try {
-        // 엔드포인트 수정: /predict -> /analyze
-        const response = await fetch(`${API_BASE_URL}/analyze`, {
+        const response = await fetch(`${API_BASE_URL}/predict`, {
             method: 'POST',
             body: formData,
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Backend Error: ${response.statusText}`);
+            throw new Error(`Backend Error: ${response.statusText}`);
         }
 
         const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
         return data;
-        
     } catch (error) {
         console.error("Analysis Error:", error);
-        if (error.message.includes("Failed to fetch")) {
-            alert("Flask 서버가 켜져있지 않습니다. 터미널에서 'python app.py'를 실행했는지 확인해주세요.");
-        }
         throw error;
     }
 };
 
-
-// 2. AI 챗봇 (후속 질문)
-
-export const chatWithAI = async (userId, message, language) => {
+// 2. AI 챗봇 대화 요청
+export const chatWithAI = async (message, contextName, language, nationality) => {
     try {
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                user_id: userId, 
-                question: message, 
-                language: language
+                message: message,
+                context: contextName || "문화재",
+                language: language,
+                nationality: nationality
             }),
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Backend Error: ${response.statusText}`);
+            throw new Error(`Backend Error: ${response.statusText}`);
         }
 
         const data = await response.json();
-        return data.response; 
+        return data.reply;
         
     } catch (error) {
         console.error("Chat Error:", error);
-        throw error; 
+        return "죄송합니다. 서버와 연결할 수 없습니다.";
     }
 };
