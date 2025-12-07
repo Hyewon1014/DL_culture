@@ -1,5 +1,5 @@
 // Flask(FastAPI) 서버 주소
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'http://cscloud.gpu3.hufs.ac.kr:30016';
 
 // 1. 이미지 분석 요청
 export const analyzeImage = async (file, language, nationality) => {
